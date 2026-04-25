@@ -18,11 +18,11 @@ defines project-level rules and the reading order only.
 
 ## Current Scope
 
-- Current stage: Stage 0A.
-- Allowed work now: minimal project skeleton, environment lock, Stage 0
-  configuration schema, and project specification documents.
-- Do not enter Stage 1 or later until the current stage validator passes.
-- Do not download raw data or model weights during Stage 0A document work.
+- Current stage is not fixed in this file.
+- The active stage and allowed scope are defined by the latest explicit user
+  request and `docs/project_status.md`.
+- Do not enter a later stage until the current stage validator passes and the
+  user explicitly authorizes the next stage.
 
 ## Hard Rules
 

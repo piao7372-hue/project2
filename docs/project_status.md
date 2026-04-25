@@ -19,9 +19,14 @@ Last updated: 2026-04-25
 
 ## Current Stage
 
-- Stage: Stage 0F-1
-- Scope: read-only Stage 0 final gate and engineering specification consistency check.
-- Not in scope: data copy/move/delete, downloads, CLIP download, faiss installation, manifest/split generation, feature extraction, Stage 2 feature cache, semantic matrices, Stage 1+ code, Stage 1+ execution, git commit/push, or Stage 0 total garbage cleanup.
+- Stage 0: completed and pushed (`43e3cc1 stage0: finalize environment raw data and clip preparation`).
+- Stage 1: completed and pushed (`f0b5d17 stage1: build manifests and freeze splits`).
+- Current next stage: Stage 3 pending; not started and requires explicit authorization.
+- Stage 2A status: MIRFlickr-25K completed and validator passed.
+- Stage 2B status: NUS-WIDE completed and validator passed.
+- Stage 2C status: MSCOCO completed and validator passed.
+- Current scope: Stage 2 post-completion garbage detection, cleanup, and full validation.
+- Not in scope: Stage 3, semantic matrices, training, git commit, or git push.
 
 ## Stage 0F-1 Products
 
@@ -91,14 +96,29 @@ Last updated: 2026-04-25
 
 - Required ignored paths for raw data, processed data, outputs, models, arrays, checkpoints, cache, and logs passed `git check-ignore`.
 - Stage 0 source files are not ignored by `.gitignore`.
-- `data/processed` does not exist.
-- No Stage 1+ artifact names were found: manifest files, split ids, `X_I.npy`, `X_T.npy`, `A.npy`, `R.npy`, `Se.npy`, `C.npy`, or `S.npy`.
+- `data/processed` contains ignored runtime artifacts and must not be staged or tracked as source.
+- Stage 1 manifest and split artifacts are frozen runtime products under `data/processed`.
+- Stage 2 feature cache files remain runtime products and must not be staged or tracked as source.
 
 ## Current Gate
 
-- Stage 0 is complete according to the final gate.
-- Stage 1 is still not allowed until explicitly authorized by the user.
-- The next housekeeping step, if requested later, can be a Stage 0 total cleanup dry-run plan. It was not performed in Stage 0F-1.
+- Stage 0 is complete and pushed.
+- Stage 1 is complete and pushed.
+- Stage 2A MIRFlickr-25K is complete and validator passed.
+- Stage 2B NUS-WIDE is complete and validator passed.
+- Stage 2C MSCOCO is complete and validator passed.
+- Stage 3, semantic matrices, and training are not allowed until explicitly authorized.
+
+## Stage 2 Status
+
+- Stage 2A / MIRFlickr-25K: completed; `validate_stage2_features.py --dataset mirflickr25k` passed.
+- Stage 2B / NUS-WIDE: completed; `validate_stage2_features.py --dataset nuswide` passed.
+- Stage 2C / MSCOCO: completed; `validate_stage2_features.py --dataset mscoco` passed.
+- Stage 2 feature_set_id: `clip_vit_b32_formal_v1`.
+- MIR feature shapes: `X_I=(20015, 512)`, `X_T=(20015, 512)`, dtype `float32`.
+- NUS feature shapes: `X_I=(186577, 512)`, `X_T=(186577, 512)`, dtype `float32`.
+- COCO feature shapes: `X_I=(123287, 512)`, `X_T=(123287, 512)`, dtype `float32`.
+- Stage 3, semantic matrices, and training: not started.
 
 ## Stage 1 Status
 

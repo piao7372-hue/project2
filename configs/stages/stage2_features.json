@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "stage": "stage2",
+  "substage": "stage2c_mscoco",
+  "feature_set_id": "clip_vit_b32_formal_v1",
+  "runtime": {
+    "formal_python_path": "C:/Users/ASVS/anaconda3/envs/deeplearning/python.exe",
+    "require_formal_python": true,
+    "device": "cuda:0",
+    "dtype": "float32",
+    "amp_enabled": false
+  },
+  "clip": {
+    "backbone_id": "openai/clip-vit-base-patch32",
+    "model_local_path": "models/clip/openai_clip-vit-base-patch32",
+    "local_files_only": true
+  },
+  "inputs": {
+    "processed_root": "data/processed"
+  },
+  "outputs": {
+    "feature_cache_dirname": "clip_vit_b32_formal_v1"
+  },
+  "batches": {
+    "image_batch_size": 64,
+    "text_batch_size": 256
+  },
+  "baseline": {
+    "top_k": 50,
+    "query_block_size": 64,
+    "block_size_similarity": 2048,
+    "random_seed": 0,
+    "random_pair_sample_size": 10000
+  },
+  "execution_policy": {
+    "allow_bad_sample_skip": false,
+    "allow_silent_fallback": false,
+    "allow_zero_vector_padding": false,
+    "allow_cpu_fallback": false,
+    "allow_online_fallback": false,
+    "fail_fast": true
+  },
+  "datasets": {
+    "mirflickr25k": {
+      "enabled_in_stage2a": true,
+      "expected_filtered_count": 20015,
+      "expected_query_count": 2000,
+      "expected_retrieval_count": 18015,
+      "expected_train_count": 5000,
+      "label_dimension": 24,
+      "sample_id_prefix": "mir"
+    },
+    "nuswide": {
+      "enabled_in_stage2b": true,
+      "expected_filtered_count": 186577,
+      "expected_query_count": 2000,
+      "expected_retrieval_count": 184577,
+      "expected_train_count": 5000,
+      "label_dimension": 10,
+      "sample_id_prefix": "nus"
+    },
+    "mscoco": {
+      "enabled_in_stage2c": true,
+      "expected_filtered_count": 123287,
+      "expected_query_count": 2000,
+      "expected_retrieval_count": 121287,
+      "expected_train_count": 5000,
+      "label_dimension": 80,
+      "sample_id_prefix": "coco"
+    }
+  }
+}
