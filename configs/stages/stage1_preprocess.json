@@ -32,7 +32,8 @@
       "expected_retrieval_count": 18015,
       "label_dimension": 24,
       "sample_id_prefix": "mir",
-      "filter_policy": "pragmatic_high_signal_v1",
+      "filter_policy": "mir_pragmatic_high_signal_label_positive_v2",
+      "filter_candidate": "candidate_5_nonempty_text_label_positive_then_current_sort_truncate",
       "label_names": [
         "animals",
         "baby",

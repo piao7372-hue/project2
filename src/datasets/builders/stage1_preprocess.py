@@ -11,7 +11,7 @@ import numpy as np
 
 from src.utils.jsonl import jsonl_dumps, read_json, write_json, write_jsonl
 
-STAGE1A_BUILDER_VERSION = "stage1a_mir_builder_v1"
+STAGE1A_BUILDER_VERSION = "stage1a_mir_builder_v2"
 STAGE1B_BUILDER_VERSION = "stage1b_nus_builder_v1"
 STAGE1C_BUILDER_VERSION = "stage1c_coco_builder_v1"
 MIR_DATASET = "mirflickr25k"
@@ -41,7 +41,7 @@ def run_stage1_preprocess(repo_root: Path, config_path: Path, raw_roots_path: Pa
 
     generated_at = _utc_now()
     raw_samples = _build_mir_raw_samples(repo_root, raw_root, dataset_config)
-    filtered_samples, filter_stats = _filter_mir_samples(raw_samples, dataset_config["expected_filtered_count"])
+    filtered_samples, filter_stats = _filter_mir_samples(raw_samples, dataset_config)
     split = make_split(
         [sample["sample_id"] for sample in filtered_samples],
         seed=int(config["split"]["seed"]),
@@ -56,6 +56,29 @@ def run_stage1_preprocess(repo_root: Path, config_path: Path, raw_roots_path: Pa
         "query_ids_sha256": hash_lines(split["query_ids"]),
         "retrieval_ids_sha256": hash_lines(split["retrieval_ids"]),
         "train_ids_sha256": hash_lines(split["train_ids"]),
+    }
+    write_jsonl(paths["manifest_raw"], raw_samples)
+    write_jsonl(paths["manifest_filtered"], filtered_samples)
+    write_json(paths["manifest_meta"], _manifest_meta(dataset_config, raw_root, raw_samples, filtered_samples, filter_stats, generated_at))
+    _write_lines(paths["query_ids"], split["query_ids"])
+    _write_lines(paths["retrieval_ids"], split["retrieval_ids"])
+    _write_lines(paths["train_ids"], split["train_ids"])
+    write_json(paths["split_summary"], _split_summary(split, config["split"], dataset_config, generated_at))
+    write_json(paths["preprocess_summary"], _preprocess_summary(dataset_config, raw_root, processed_root, filter_stats, split, order_hashes, generated_at))
+    write_json(paths["config_snapshot"], {"stage1_config": config, "raw_roots_config": {MIR_DATASET: raw_roots[MIR_DATASET]}})
+    write_json(paths["order_hashes"], order_hashes)
+    return {
+        "dataset": MIR_DATASET,
+        "generated_at_utc": generated_at,
+        "raw_count": len(raw_samples),
+        "filtered_count": len(filtered_samples),
+        "empty_text_removed": filter_stats["empty_text_removed"],
+        "zero_label_filtered_count": filter_stats["zero_label_filtered_count"],
+        "query_count": len(split["query_ids"]),
+        "retrieval_count": len(split["retrieval_ids"]),
+        "train_count": len(split["train_ids"]),
+        "processed_root": str(processed_root),
+        "order_hashes": order_hashes,
     }
 
 
@@ -103,30 +126,6 @@ def _run_coco_preprocess(repo_root: Path, config: dict[str, Any], raw_roots: dic
         "processed_root": str(processed_root),
         "order_hashes": order_hashes,
     }
-
-    write_jsonl(paths["manifest_raw"], raw_samples)
-    write_jsonl(paths["manifest_filtered"], filtered_samples)
-    write_json(paths["manifest_meta"], _manifest_meta(dataset_config, raw_root, raw_samples, filtered_samples, filter_stats, generated_at))
-    _write_lines(paths["query_ids"], split["query_ids"])
-    _write_lines(paths["retrieval_ids"], split["retrieval_ids"])
-    _write_lines(paths["train_ids"], split["train_ids"])
-    write_json(paths["split_summary"], _split_summary(split, config["split"], dataset_config, generated_at))
-    write_json(paths["preprocess_summary"], _preprocess_summary(dataset_config, raw_root, processed_root, filter_stats, split, order_hashes, generated_at))
-    write_json(paths["config_snapshot"], {"stage1_config": config, "raw_roots_config": {dataset: raw_roots[dataset]}})
-    write_json(paths["order_hashes"], order_hashes)
-    return {
-        "dataset": dataset,
-        "generated_at_utc": generated_at,
-        "raw_count": len(raw_samples),
-        "filtered_count": len(filtered_samples),
-        "empty_text_removed": filter_stats["empty_text_removed"],
-        "query_count": len(split["query_ids"]),
-        "retrieval_count": len(split["retrieval_ids"]),
-        "train_count": len(split["train_ids"]),
-        "processed_root": str(processed_root),
-        "order_hashes": order_hashes,
-    }
-
 
 def _run_nuswide_preprocess(repo_root: Path, config: dict[str, Any], raw_roots: dict[str, Any], raw_root: Path, processed_root: Path) -> dict[str, Any]:
     dataset_config = config["datasets"][NUS_DATASET]
@@ -254,27 +253,54 @@ def _build_mir_raw_samples(repo_root: Path, raw_root: Path, config: dict[str, An
     return samples
 
 
-def _filter_mir_samples(samples: list[dict[str, Any]], expected_filtered_count: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _filter_mir_samples(samples: list[dict[str, Any]], config: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    expected_filtered_count = int(config["expected_filtered_count"])
+    filter_policy = str(config["filter_policy"])
+    filter_candidate = str(config.get("filter_candidate", "candidate_1_current_pragmatic_high_signal_v1"))
     non_empty = [sample for sample in samples if sample["text_source"]]
-    ranked = sorted(
-        non_empty,
+    label_positive = [sample for sample in samples if int(sample["meta"]["annotation_positive_count"]) > 0]
+    non_empty_label_positive = [sample for sample in non_empty if int(sample["meta"]["annotation_positive_count"]) > 0]
+    if filter_policy == "pragmatic_high_signal_v1":
+        candidate_rows = non_empty
+    elif filter_policy == "mir_pragmatic_high_signal_label_positive_v2":
+        if filter_candidate == "candidate_3_tag20_and_label_positive":
+            candidate_rows = [sample for sample in samples if int(sample["meta"]["raw_tag_token_count"]) >= 20 and int(sample["meta"]["annotation_positive_count"]) > 0]
+        elif filter_candidate == "candidate_5_nonempty_text_label_positive_then_current_sort_truncate":
+            candidate_rows = non_empty_label_positive
+        else:
+            raise RuntimeError(f"unsupported MIR filter_candidate for {filter_policy}: {filter_candidate}")
+    else:
+        raise RuntimeError(f"unsupported MIR filter_policy: {filter_policy}")
+    ranked = _rank_mir_samples(candidate_rows)
+    if len(ranked) < expected_filtered_count:
+        raise RuntimeError(f"MIR filtered candidates below expected filtered count: {len(ranked)} < {expected_filtered_count}")
+    selected = ranked[:expected_filtered_count]
+    zero_label_filtered_count = sum(int(sample["meta"]["annotation_positive_count"]) == 0 for sample in selected)
+    if filter_policy == "mir_pragmatic_high_signal_label_positive_v2" and zero_label_filtered_count:
+        raise RuntimeError(f"MIR v2 filter selected zero-label samples: {zero_label_filtered_count}")
+    return sorted(selected, key=lambda sample: sample["sample_id"]), {
+        "filter_policy": filter_policy,
+        "filter_candidate": filter_candidate,
+        "raw_count": len(samples),
+        "non_empty_text_count": len(non_empty),
+        "label_positive_count": len(label_positive),
+        "non_empty_text_label_positive_count": len(non_empty_label_positive),
+        "empty_text_removed": len(samples) - len(non_empty),
+        "zero_label_filtered_count": zero_label_filtered_count,
+        "filtered_count": expected_filtered_count,
+        "selection_order_sample_id_sha256": hash_lines(sample["sample_id"] for sample in selected),
+    }
+
+
+def _rank_mir_samples(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        samples,
         key=lambda sample: (
             -int(sample["meta"]["raw_tag_token_count"]),
             -int(sample["meta"]["annotation_positive_count"]),
             sample["sample_id"],
         ),
     )
-    if len(ranked) < expected_filtered_count:
-        raise RuntimeError(f"MIR non-empty text samples below expected filtered count: {len(ranked)} < {expected_filtered_count}")
-    selected = ranked[:expected_filtered_count]
-    return sorted(selected, key=lambda sample: sample["sample_id"]), {
-        "filter_policy": "pragmatic_high_signal_v1",
-        "raw_count": len(samples),
-        "non_empty_text_count": len(non_empty),
-        "empty_text_removed": len(samples) - len(non_empty),
-        "filtered_count": expected_filtered_count,
-        "selection_order_sample_id_sha256": hash_lines(sample["sample_id"] for sample in selected),
-    }
 
 
 def _read_positive_indices(path: Path, expected_raw_count: int) -> set[int]:
@@ -799,9 +825,14 @@ def _preprocess_summary(config: dict[str, Any], raw_root: Path, processed_root: 
         "raw_root": str(raw_root),
         "processed_root": str(processed_root),
         "filter_policy": config["filter_policy"],
+        "filter_candidate": stats.get("filter_candidate"),
         "manifest_raw_count": stats["raw_count"],
         "manifest_filtered_count": stats["filtered_count"],
         "empty_text_removed": stats["empty_text_removed"],
+        "non_empty_text_count": stats["non_empty_text_count"],
+        "label_positive_count": stats["label_positive_count"],
+        "non_empty_text_label_positive_count": stats["non_empty_text_label_positive_count"],
+        "zero_label_filtered_count": stats["zero_label_filtered_count"],
         "query_count": len(split["query_ids"]),
         "retrieval_count": len(split["retrieval_ids"]),
         "train_count": len(split["train_ids"]),

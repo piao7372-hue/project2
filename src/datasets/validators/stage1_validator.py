@@ -59,7 +59,11 @@ def _validate_mir(repo_root: Path, config_path: Path) -> dict[str, Any]:
         _check_splits(filtered_rows, paths, config["split"], dataset_config, failures)
         _check_hashes(filtered_rows, paths, failures)
         _check_no_silent_fallback(paths, failures)
+        mir_label_contract = _check_mir_label_positive_contract(filtered_rows, paths, config, failures)
+    else:
+        mir_label_contract = {}
     summary = _base_summary(MIR_DATASET, processed_root, output_presence, failures, raw_rows, filtered_rows, paths)
+    summary.update(mir_label_contract)
     write_json(paths["validator_summary"], summary)
     return summary
 
@@ -412,6 +416,71 @@ def _check_hashes(filtered_rows: list[dict[str, Any]], paths: dict[str, Path], f
     for key, value in expected.items():
         if hashes.get(key) != value:
             failures.append(f"order_hashes mismatch for {key}: expected {value}, got {hashes.get(key)}")
+
+
+def _check_mir_label_positive_contract(
+    filtered_rows: list[dict[str, Any]],
+    paths: dict[str, Path],
+    config: dict[str, Any],
+    failures: list[str],
+) -> dict[str, Any]:
+    preprocess_summary = read_json(paths["preprocess_summary"])
+    manifest_meta = read_json(paths["manifest_meta"])
+    expected_policy = config["datasets"][MIR_DATASET]["filter_policy"]
+    if expected_policy != "mir_pragmatic_high_signal_label_positive_v2":
+        failures.append(f"MIR filtering_policy is not mir_pragmatic_high_signal_label_positive_v2: {expected_policy}")
+    if preprocess_summary.get("filter_policy") != expected_policy:
+        failures.append("preprocess_summary.filter_policy does not match MIR config")
+    filter_stats = manifest_meta.get("filter_stats", {}) if isinstance(manifest_meta.get("filter_stats"), dict) else {}
+    if filter_stats.get("filter_policy") != expected_policy:
+        failures.append("manifest_meta.filter_stats.filter_policy does not match MIR config")
+
+    query_ids = _read_lines(paths["query_ids"])
+    retrieval_ids = _read_lines(paths["retrieval_ids"])
+    train_ids = _read_lines(paths["train_ids"])
+    by_id = {str(row["sample_id"]): row for row in filtered_rows}
+    label_masks = {sample_id: _label_mask(row) for sample_id, row in by_id.items()}
+    zero_filtered = sum(mask == 0 for mask in label_masks.values())
+    zero_query = sum(label_masks[sample_id] == 0 for sample_id in query_ids)
+    zero_train = sum(label_masks[sample_id] == 0 for sample_id in train_ids)
+    zero_retrieval = sum(label_masks[sample_id] == 0 for sample_id in retrieval_ids)
+    retrieval_masks = [label_masks[sample_id] for sample_id in retrieval_ids]
+    no_relevant = sum(1 for sample_id in query_ids if not _has_relevant(label_masks[sample_id], retrieval_masks))
+
+    if zero_filtered != 0:
+        failures.append(f"zero_label_filtered_count must be 0, got {zero_filtered}")
+    if zero_query != 0:
+        failures.append(f"zero_label_query_count must be 0, got {zero_query}")
+    if zero_train != 0:
+        failures.append(f"zero_label_train_count must be 0, got {zero_train}")
+    if zero_retrieval != 0:
+        failures.append(f"zero_label_retrieval_count must be 0, got {zero_retrieval}")
+    if no_relevant != 0:
+        failures.append(f"query_with_no_relevant_retrieval_count must be 0, got {no_relevant}")
+
+    return {
+        "filtering_policy": expected_policy,
+        "zero_label_filtered_count": zero_filtered,
+        "zero_label_query_count": zero_query,
+        "zero_label_train_count": zero_train,
+        "zero_label_retrieval_count": zero_retrieval,
+        "query_with_no_relevant_retrieval_count": no_relevant,
+        "query_with_no_relevant_retrieval_rate": no_relevant / len(query_ids) if query_ids else 0.0,
+    }
+
+
+def _label_mask(row: dict[str, Any]) -> int:
+    mask = 0
+    for index, value in enumerate(row.get("label_vector", [])):
+        if int(value):
+            mask |= 1 << index
+    return mask
+
+
+def _has_relevant(query_mask: int, retrieval_masks: list[int]) -> bool:
+    if query_mask == 0:
+        return False
+    return any(query_mask & mask for mask in retrieval_masks)
 
 
 def _check_no_silent_fallback(paths: dict[str, Path], failures: list[str]) -> None:

@@ -41,6 +41,8 @@ def main() -> int:
     print(f"manifest_filtered_count={summary['filtered_count']}")
     if "empty_text_removed" in summary:
         print(f"empty_text_removed={summary['empty_text_removed']}")
+    if "zero_label_filtered_count" in summary:
+        print(f"zero_label_filtered_count={summary['zero_label_filtered_count']}")
     if "empty_tag_row_count" in summary:
         print(f"empty_tag_row_count={summary['empty_tag_row_count']}")
     if "concept_subset" in summary:

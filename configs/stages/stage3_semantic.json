@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "stage": "stage3",
+  "current_substage": "stage3a_mirflickr25k",
+  "semantic_set_id": "se_c_s_formal_v1",
+  "feature_set_id": "clip_vit_b32_formal_v1",
+  "runtime": {
+    "formal_python_path": "C:/Users/ASVS/anaconda3/envs/deeplearning/python.exe",
+    "require_formal_python": true,
+    "device": "cuda:0",
+    "dtype": "float32"
+  },
+  "inputs": {
+    "processed_root": "data/processed"
+  },
+  "outputs": {
+    "feature_cache_dirname": "clip_vit_b32_formal_v1",
+    "semantic_cache_dirname": "se_c_s_formal_v1"
+  },
+  "profiles": {
+    "mirflickr25k": {
+      "lambda_ar_fusion": 0.7,
+      "tau_confidence": 0.0075,
+      "topk_for_diagnostics": 50
+    },
+    "nuswide": {
+      "lambda_ar_fusion": 0.5,
+      "tau_confidence": 0.1,
+      "topk_for_diagnostics": 50
+    },
+    "mscoco": {
+      "lambda_ar_fusion": 0.75,
+      "tau_confidence": 0.07,
+      "topk_for_diagnostics": 50
+    }
+  },
+  "datasets": {
+    "mirflickr25k": {
+      "expected_filtered_count": 20015,
+      "expected_train_count": 5000,
+      "feature_dim": 512,
+      "sample_id_prefix": "mir"
+    },
+    "nuswide": {
+      "expected_filtered_count": 186577,
+      "expected_train_count": 5000,
+      "feature_dim": 512,
+      "sample_id_prefix": "nus"
+    },
+    "mscoco": {
+      "expected_filtered_count": 123287,
+      "expected_train_count": 5000,
+      "feature_dim": 512,
+      "sample_id_prefix": "coco"
+    }
+  },
+  "validation": {
+    "range_tolerance": 1e-6,
+    "norm_tolerance": 1e-4,
+    "min_paired_diag_quantile_median": 0.99,
+    "min_diag_minus_offdiag_s": 0.0,
+    "min_diag_over_offdiag_ratio": 10.0,
+    "min_diag_in_row_topk_rate": 0.8,
+    "min_diag_in_col_topk_rate": 0.8,
+    "min_row_topk_coverage": 0.99,
+    "min_col_topk_coverage": 0.99,
+    "require_omega_diagnostic_only": true
+  },
+  "execution_policy": {
+    "allow_silent_fallback": false,
+    "allow_zero_vector_padding": false,
+    "allow_query_or_retrieval_non_train_supervision": false,
+    "allow_full_filtered_supervision": false,
+    "allow_s_post_normalization": false,
+    "fail_fast": true
+  }
+}
