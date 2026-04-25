@@ -99,3 +99,44 @@ Last updated: 2026-04-25
 - Stage 0 is complete according to the final gate.
 - Stage 1 is still not allowed until explicitly authorized by the user.
 - The next housekeeping step, if requested later, can be a Stage 0 total cleanup dry-run plan. It was not performed in Stage 0F-1.
+
+## Stage 1 Status
+
+- Stage 1 status: completed.
+- Stage 1 datasets:
+  - mirflickr25k: raw=25000, filtered=20015, query=2000, retrieval=18015, train=5000.
+  - nuswide: raw=269648, filtered=186577, query=2000, retrieval=184577, train=5000.
+  - mscoco: raw=123287, filtered=123287, query=2000, retrieval=121287, train=5000.
+
+## Stage 1 Frozen Artifacts
+
+- `manifest_raw.jsonl`
+- `manifest_filtered.jsonl`
+- `manifest_meta.json`
+- `query_ids.txt`
+- `retrieval_ids.txt`
+- `train_ids.txt`
+- `split_summary.json`
+- `preprocess_summary.json`
+- `validator_summary.json`
+- `config_snapshot.json`
+- `order_hashes.json`
+
+## Stage 1 Validators
+
+- `validate_stage1_preprocess.py --dataset mirflickr25k`: passed.
+- `validate_stage1_preprocess.py --dataset nuswide`: passed.
+- `validate_stage1_preprocess.py --dataset mscoco`: passed.
+
+## Stage 1 Diagnostics
+
+- MIR empty_text_removed=2128.
+- NUS empty_tag_row_count=2005.
+- NUS concept_subset=sky, clouds, person, water, animal, grass, buildings, window, plants, lake.
+- COCO zero_label_image_count=1069.
+
+## Stage 2 Boundary
+
+- Stage 2 may consume Stage 1 manifest/split artifacts.
+- Stage 2 must not rewrite sample_id, text_source, label_vector, or split.
+- Stage 2 must not bypass Stage 1 by reading raw data directly.

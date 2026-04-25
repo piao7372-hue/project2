@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "stage": "stage1",
+  "substage": "stage1c_mscoco",
+  "runtime": {
+    "formal_python_path": "C:/Users/ASVS/anaconda3/envs/deeplearning/python.exe",
+    "require_formal_python": true
+  },
+  "inputs": {
+    "raw_roots_config": "configs/datasets/raw_roots.json"
+  },
+  "outputs": {
+    "processed_root": "data/processed"
+  },
+  "execution_policy": {
+    "allow_bad_sample_skip": false,
+    "allow_silent_fallback": false,
+    "allow_zero_vector_padding": false,
+    "fail_fast": true
+  },
+  "split": {
+    "seed": 0,
+    "query_count": 2000,
+    "train_count": 5000,
+    "rng_protocol": "numpy_random_state_v1"
+  },
+  "datasets": {
+    "mirflickr25k": {
+      "enabled_in_stage1a": true,
+      "expected_raw_count": 25000,
+      "expected_filtered_count": 20015,
+      "expected_retrieval_count": 18015,
+      "label_dimension": 24,
+      "sample_id_prefix": "mir",
+      "filter_policy": "pragmatic_high_signal_v1",
+      "label_names": [
+        "animals",
+        "baby",
+        "bird",
+        "car",
+        "clouds",
+        "dog",
+        "female",
+        "flower",
+        "food",
+        "indoor",
+        "lake",
+        "male",
+        "night",
+        "people",
+        "plant_life",
+        "portrait",
+        "river",
+        "sea",
+        "sky",
+        "structures",
+        "sunset",
+        "transport",
+        "tree",
+        "water"
+      ]
+    },
+    "nuswide": {
+      "enabled_in_stage1b": true,
+      "expected_raw_count": 269648,
+      "expected_filtered_count": 186577,
+      "expected_retrieval_count": 184577,
+      "expected_final_tag_count": 5018,
+      "expected_concept_count": 81,
+      "label_dimension": 10,
+      "sample_id_prefix": "nus",
+      "filter_policy": "top10_concept_positive_v1",
+      "text_source_protocol": "final_tag_list_projected_binary_decode_v1"
+    },
+    "mscoco": {
+      "enabled_in_stage1c": true,
+      "expected_raw_count": 123287,
+      "expected_filtered_count": 123287,
+      "expected_retrieval_count": 121287,
+      "expected_train_image_count": 82783,
+      "expected_val_image_count": 40504,
+      "expected_category_count": 80,
+      "label_dimension": 80,
+      "sample_id_prefix": "coco",
+      "filter_policy": "image_level_no_filter_v1",
+      "category_order_protocol": "coco_category_id_ascending_v1",
+      "caption_joiner": ". "
+    }
+  }
+}
