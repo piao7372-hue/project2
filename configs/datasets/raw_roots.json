@@ -1,0 +1,12 @@
+{
+  "mirflickr25k": {
+    "raw_root": "data/raw/mirflickr25k"
+  },
+  "mscoco": {
+    "raw_root": "data/raw/mscoco"
+  },
+  "nuswide": {
+    "raw_root": "data/raw/nuswide",
+    "source_protocol": "original_ra_nus_image_index_v1"
+  }
+}

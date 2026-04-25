@@ -1,0 +1,34 @@
+{
+  "clip": {
+    "allow_online_download": false,
+    "backbone_id": "openai/clip-vit-base-patch32",
+    "model_local_path": "models/clip/openai_clip-vit-base-patch32"
+  },
+  "engineering_spec": {
+    "document": "kan_engineering_original_RA_NUS.pdf",
+    "nus_protocol": "original_ra_nus_image_index_v1",
+    "portable_path_warning": true
+  },
+  "execution_policy": {
+    "allow_bad_sample_skip": false,
+    "allow_git_commit": false,
+    "allow_git_push": false,
+    "allow_model_switch": false,
+    "allow_silent_fallback": false,
+    "allow_zero_vector_padding": false,
+    "fail_fast": true
+  },
+  "formal_spec_path": "C:/Users/ASVS/Desktop/1/kan_engineering_original_RA_NUS.pdf",
+  "outputs": {
+    "lock_json_path": "outputs/env/environment.lock.json",
+    "lock_markdown_path": "docs/environment_lock.md"
+  },
+  "runtime": {
+    "allow_codex_runtime_for_stage0a_only": false,
+    "formal_python_path": "C:/Users/ASVS/anaconda3/envs/deeplearning/python.exe",
+    "require_formal_python": true
+  },
+  "schema_version": 1,
+  "stage": "stage0",
+  "substage": "stage0a"
+}

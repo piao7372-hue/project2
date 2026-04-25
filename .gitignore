@@ -1,0 +1,43 @@
+# Runtime products and datasets
+data/raw/
+data/processed/
+outputs/
+
+# Checkpoints and array artifacts
+*.npy
+*.npz
+*.pt
+*.pth
+*.ckpt
+
+# Caches, logs, notebooks, and local debug state
+cache/
+.cache/
+logs/
+checkpoint/
+checkpoints/
+ckpts/
+*.log
+wandb/
+tensorboard/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.ipynb
+
+# Local scratch files
+*.tmp
+*.bak
+*backup*
+*final2*
+*newnew*
+
+# Common duplicate-file scratch names; keep source identifiers such as raw_layout_copy.py trackable.
+* - Copy.*
+* - Copy/
+* - copy.*
+* - copy/
+*_copy.tmp
+*_copy.bak
+models/
