@@ -40,4 +40,4 @@ __pycache__/
 * - copy/
 *_copy.tmp
 *_copy.bak
-models/
+/models/

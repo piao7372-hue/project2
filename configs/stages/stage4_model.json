@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "stage": "stage4",
+  "cache_id": "stage4_forward_v1",
+  "stage4_model_id": "chebykan_tree_graph_hash_v1",
+  "feature_set_id": "clip_vit_b32_formal_v1",
+  "semantic_set_id": "se_c_s_formal_v1",
+  "runtime": {
+    "python": "C:\\Users\\ASVS\\anaconda3\\envs\\deeplearning\\python.exe",
+    "device": "cuda:0",
+    "dtype": "float32",
+    "amp_enabled": false,
+    "seed": 0
+  },
+  "inputs": {
+    "processed_root": "data/processed"
+  },
+  "hash_bits": [
+    16,
+    32,
+    64,
+    128
+  ],
+  "datasets": {
+    "mirflickr25k": {
+      "d_z": 256,
+      "cheby_order": 4,
+      "tree_levels": 2,
+      "tree_prototypes": [
+        256,
+        64
+      ],
+      "graph_k_train": 15,
+      "beta_tree_injection": 1.0,
+      "expected_train_count": 5000,
+      "input_feature_dim": 512
+    },
+    "nuswide": {
+      "d_z": 256,
+      "cheby_order": 3,
+      "tree_levels": 3,
+      "tree_prototypes": [
+        512,
+        128,
+        32
+      ],
+      "graph_k_train": 30,
+      "beta_tree_injection": 1.0,
+      "expected_train_count": 5000,
+      "input_feature_dim": 512
+    },
+    "mscoco": {
+      "d_z": 384,
+      "cheby_order": 4,
+      "tree_levels": 2,
+      "tree_prototypes": [
+        384,
+        96
+      ],
+      "graph_k_train": 20,
+      "beta_tree_injection": 1.0,
+      "expected_train_count": 5000,
+      "input_feature_dim": 512
+    }
+  },
+  "dev_only_tree_candidates": {
+    "mirflickr25k": [
+      {
+        "tree_levels": 3,
+        "tree_prototypes": [
+          256,
+          96,
+          32
+        ]
+      }
+    ],
+    "nuswide": [
+      {
+        "tree_levels": 4,
+        "tree_prototypes": [
+          512,
+          192,
+          64,
+          16
+        ]
+      }
+    ],
+    "mscoco": [
+      {
+        "tree_levels": 3,
+        "tree_prototypes": [
+          384,
+          128,
+          32
+        ]
+      }
+    ]
+  },
+  "validation": {
+    "constant_bit_ratio_max": 0.25,
+    "unique_code_ratio_min": 0.05,
+    "bit_mean_abs_max": 0.98,
+    "h_std_min": 1e-5,
+    "assignment_row_sum_error_max": 1e-5,
+    "tree_entropy_near_zero_ratio": 0.05,
+    "tree_effective_prototype_ratio_min": 0.25,
+    "tree_y_z_norm_ratio_max": 10.0
+  },
+  "execution_policy": {
+    "allow_silent_fallback": false,
+    "allow_zero_vector_padding": false,
+    "allow_bad_sample_skip": false,
+    "allow_cpu_fallback": false,
+    "allow_automatic_model_replacement": false,
+    "allow_automatic_split_replacement": false,
+    "allow_compatibility_alias": false,
+    "fail_fast": true,
+    "stage4_forward_allowed_datasets": [
+      "mirflickr25k",
+      "nuswide",
+      "mscoco"
+    ],
+    "stage4a2_allowed_datasets": [
+      "mirflickr25k"
+    ],
+    "run_dev_only_tree_candidates_in_stage4_forward": false,
+    "run_dev_only_tree_candidates_in_stage4a2": false
+  }
+}

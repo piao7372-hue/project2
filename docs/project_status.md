@@ -21,12 +21,12 @@ Last updated: 2026-04-26
 
 - Stage 0: completed and pushed (`43e3cc1 stage0: finalize environment raw data and clip preparation`).
 - Stage 1: completed and pushed (`f0b5d17 stage1: build manifests and freeze splits`).
-- Current next stage: Stage 3 post-lock cleanup and full validator review; MIR Stage 3A, NUS Stage 3B, and COCO Stage 3C are locked locally.
+- Current next stage: Stage 4 post-cleanup, full validator review, and publish checkpoint; Stage 5 has not started.
 - Stage 2A status: MIRFlickr-25K completed and validator passed.
 - Stage 2B status: NUS-WIDE completed and validator passed.
 - Stage 2C status: MSCOCO completed and validator passed.
-- Current scope: Stage 3 post-cleanup, temporary audit artifact removal, and full Stage 1/2/3 validator review.
-- Not in scope: Stage 4, training, model implementation, evaluation, commit, or push.
+- Current scope: Stage 4 post-cleanup, full Stage 1/2/3/4 validator review, commit, and push.
+- Not in scope: Stage 5, training, mAP evaluation, or model-logic changes.
 - Stage 3 acceptance summary: `docs/stage3_acceptance_summary.md`.
 
 ## Stage 0F-1 Products
@@ -113,9 +113,9 @@ Last updated: 2026-04-26
 - Each dataset Stage 3 gate requires semantic validator, tau/lambda selection
   audit, semantic compatibility audit, and `S_II_star / S_TT_star`
   compatibility audit.
-- Stage 4 may start only after MIR/NUS/COCO all have formal Stage 3 `S` locked and the user explicitly authorizes Stage 4.
+- Stage 4 was explicitly authorized after MIR/NUS/COCO all had formal Stage 3 `S` locked.
 - Stage 3A MIR, Stage 3B NUS, and Stage 3C COCO are locked locally.
-- Stage 4 not started.
+- Stage 4 status: completed locally and ready to commit.
 - Stage 0 is complete and pushed.
 - Stage 1 pushed baseline exists; MIRFlickr-25K now has the RA-like label-positive revision checkpoint.
 - Stage 2A MIRFlickr-25K is complete locally after the MIR revision and validator passed.
@@ -196,7 +196,7 @@ Last updated: 2026-04-26
   - compatibility risk_level = low
   - safety/evaluator risk_level = medium because zero_label_query_count = 11 and query_with_no_relevant_retrieval_count = 11
   - validator passed
-- Stage 4 not started
+- Stage 4 status: completed locally and ready to commit.
 
 ## Stage 2 Status
 
@@ -215,7 +215,36 @@ Last updated: 2026-04-26
   `tau_confidence=0.01`; validator passed, compatibility risk is low, and
   safety/evaluator risk is medium because 11 all-query samples have no
   relevant retrieval.
-- Stage 4, model construction, and training: not started.
+- Stage 4 status: completed locally and ready to commit.
+
+## Stage 4 Status
+
+- Stage 4 status: completed locally and ready to commit.
+- Stage 4 model/cache ID: `chebykan_tree_graph_hash_v1` /
+  `stage4_forward_v1`.
+- Stage 4 datasets:
+  - mirflickr25k: 16/32/64/128-bit untrained forward passed.
+  - nuswide: 16/32/64/128-bit untrained forward passed.
+  - mscoco: 16/32/64/128-bit untrained forward passed.
+- Stage 4 formal outputs per dataset/bit:
+  - `H_I.npy`
+  - `H_T.npy`
+  - `B_I.npy`
+  - `B_T.npy`
+  - `meta.json`
+  - `validator_summary.json`
+- Stage 4 notes:
+  - Outputs are untrained sanity caches, not final retrieval results.
+  - Formal final retrieval is still Stage 7 and must use trained `B_I` /
+    `B_T` with Hamming distance.
+  - Stage 5 loss has not started.
+  - Stage 6 training has not started.
+  - Stage 7 evaluation has not started.
+- Known risks to monitor later:
+  - NUS text graph hubness was medium in Stage 4B and must be monitored during
+    Stage 6.
+  - COCO no-relevant query risk belongs to Stage 7 evaluator diagnostics, not
+    Stage 4 failure.
 
 ## Stage 3A MIRFlickr-25K Status
 
