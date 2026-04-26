@@ -45,6 +45,12 @@ def main() -> int:
         print(f"zero_label_filtered_count={summary['zero_label_filtered_count']}")
     if "empty_tag_row_count" in summary:
         print(f"empty_tag_row_count={summary['empty_tag_row_count']}")
+    if "train_selection_policy" in summary:
+        print(f"train_selection_policy={summary['train_selection_policy']}")
+    if "empty_text_train_count" in summary:
+        print(f"empty_text_train_count={summary['empty_text_train_count']}")
+    if "query_with_no_relevant_retrieval_count" in summary:
+        print(f"query_with_no_relevant_retrieval_count={summary['query_with_no_relevant_retrieval_count']}")
     if "concept_subset" in summary:
         print(f"concept_subset={summary['concept_subset']}")
         print(f"concept_positive_counts={summary['concept_positive_counts']}")

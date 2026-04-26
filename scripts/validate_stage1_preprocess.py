@@ -41,6 +41,14 @@ def main() -> int:
     print(f"query_count={summary['query_count']}")
     print(f"retrieval_count={summary['retrieval_count']}")
     print(f"train_count={summary['train_count']}")
+    if "train_selection_policy" in summary:
+        print(f"train_selection_policy={summary['train_selection_policy']}")
+    if "empty_text_train_count" in summary:
+        print(f"empty_text_train_count={summary['empty_text_train_count']}")
+    if "zero_label_filtered_count" in summary:
+        print(f"zero_label_filtered_count={summary['zero_label_filtered_count']}")
+    if "query_with_no_relevant_retrieval_count" in summary:
+        print(f"query_with_no_relevant_retrieval_count={summary['query_with_no_relevant_retrieval_count']}")
     print(f"passed={str(summary['passed']).lower()}")
     for failure in summary["failure_reason"]:
         print(f"failure={failure}")

@@ -24,13 +24,13 @@
       "topk_for_diagnostics": 50
     },
     "nuswide": {
-      "lambda_ar_fusion": 0.5,
-      "tau_confidence": 0.1,
+      "lambda_ar_fusion": 0.55,
+      "tau_confidence": 0.005,
       "topk_for_diagnostics": 50
     },
     "mscoco": {
-      "lambda_ar_fusion": 0.75,
-      "tau_confidence": 0.07,
+      "lambda_ar_fusion": 0.8,
+      "tau_confidence": 0.01,
       "topk_for_diagnostics": 50
     }
   },

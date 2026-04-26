@@ -1,6 +1,6 @@
 ﻿# Project Status
 
-Last updated: 2026-04-25
+Last updated: 2026-04-26
 
 ## Formal Specification
 
@@ -21,12 +21,13 @@ Last updated: 2026-04-25
 
 - Stage 0: completed and pushed (`43e3cc1 stage0: finalize environment raw data and clip preparation`).
 - Stage 1: completed and pushed (`f0b5d17 stage1: build manifests and freeze splits`).
-- Current next stage: Stage 3A MIRFlickr-25K RA-like label-positive revision checkpoint locked; MIR Stage 1/2/3 rerun passed with `lambda_ar_fusion=0.70`, `tau_confidence=0.0075`; pending explicit authorization before Stage 3B.
+- Current next stage: Stage 3 post-lock cleanup and full validator review; MIR Stage 3A, NUS Stage 3B, and COCO Stage 3C are locked locally.
 - Stage 2A status: MIRFlickr-25K completed and validator passed.
 - Stage 2B status: NUS-WIDE completed and validator passed.
 - Stage 2C status: MSCOCO completed and validator passed.
-- Current scope: Stage 3A MIRFlickr-25K RA-like preprocessing revision and semantic relation cache review.
-- Not in scope: Stage 3B NUS-WIDE, Stage 3C MSCOCO, Stage 4, or training.
+- Current scope: Stage 3 post-cleanup, temporary audit artifact removal, and full Stage 1/2/3 validator review.
+- Not in scope: Stage 4, training, model implementation, evaluation, commit, or push.
+- Stage 3 acceptance summary: `docs/stage3_acceptance_summary.md`.
 
 ## Stage 0F-1 Products
 
@@ -103,7 +104,8 @@ Last updated: 2026-04-25
 ## Current Gate
 
 - mAP-first execution plan: `docs/map_first_execution_plan.md`.
-- Current immediate task: MIR Stage 3A RA-like label-positive preprocessing revision review.
+- Stage 3 acceptance summary: `docs/stage3_acceptance_summary.md`.
+- Current immediate task: Stage 3 post-lock cleanup and full validator review.
 - Stage 1/2 remain frozen unless the Pre-Stage3 readiness audit shows a hard failure.
 - Stage 3 candidate selection must use unsupervised `S`-quality criteria first.
 - Label-aware metrics are diagnostics only and must not become training
@@ -111,8 +113,8 @@ Last updated: 2026-04-25
 - Each dataset Stage 3 gate requires semantic validator, tau/lambda selection
   audit, semantic compatibility audit, and `S_II_star / S_TT_star`
   compatibility audit.
-- Stage 4 may start only after MIR/NUS/COCO all have formal Stage 3 `S` locked.
-- Stage 3B/3C not started.
+- Stage 4 may start only after MIR/NUS/COCO all have formal Stage 3 `S` locked and the user explicitly authorizes Stage 4.
+- Stage 3A MIR, Stage 3B NUS, and Stage 3C COCO are locked locally.
 - Stage 4 not started.
 - Stage 0 is complete and pushed.
 - Stage 1 pushed baseline exists; MIRFlickr-25K now has the RA-like label-positive revision checkpoint.
@@ -120,7 +122,51 @@ Last updated: 2026-04-25
 - Stage 2B NUS-WIDE is complete and validator passed.
 - Stage 2C MSCOCO is complete and validator passed.
 - Stage 3A MIRFlickr-25K semantic matrices completed locally after the MIR revision with `lambda_ar_fusion=0.70`, `tau_confidence=0.0075`, and validator passed.
-- Stage 3B NUS-WIDE, Stage 3C MSCOCO, Stage 4, and training are not allowed until explicitly authorized.
+- Stage 4, model construction, training, and evaluation are not allowed until explicitly authorized.
+
+## Stage 3B NUS-WIDE No-Go Recovery Override
+
+- Initial NUS Stage 3 default profile `lambda_ar_fusion=0.50`,
+  `tau_confidence=0.10` caused a No-Go in the selection audit.
+- Root-cause audit found A/R/Se/S row-profile effective rank near 1 and
+  `main_cause=confidence_and_s_row_profiles_remain_near_rank_one`.
+- Extended NUS lambda/tau audit found a low-risk diagnostic candidate:
+  `lambda_ar_fusion=0.55`, `tau_confidence=0.005`.
+- NUS formal Stage 3 profile is user-approved as a No-Go recovery override:
+  `lambda_ar_fusion=0.55`, `tau_confidence=0.005`.
+- Stage 3 formula remains unchanged: `S = C * Se`.
+- No label supervision is used to construct `S`; label-aware metrics are
+  diagnostic-only sanity checks.
+- `Omega_topk_diag.npz` remains diagnostic only and must not be treated as the
+  training supervision body.
+- This records the NUS Stage 3B override only; it does not mark Stage 3C,
+  Stage 4, training, or evaluation as completed.
+- Subsequent extra safety audit initially found the formal NUS `S` was No-Go
+  because the then-current train split contained 31 empty-text samples whose
+  diagonal top-50 behavior collapses.
+- The authorized recovery is a Stage 1 NUS train split policy revision only:
+  `train_selection_policy=nus_train_nonempty_text_v2`.
+- This policy keeps `filtered_count=186577`, `query_count=2000`, and
+  `retrieval_count=184577` unchanged, keeps query/retrieval IDs unchanged,
+  does not alter NUS `text_source`, does not pad empty text, and selects
+  `train_ids` as the first 5000 retrieval samples with non-empty
+  `text_source`.
+- After this revision, NUS Stage 1/2/3B were rerun with the unchanged Stage 3
+  formula and `lambda_ar_fusion=0.55`, `tau_confidence=0.005`.
+- NUS Stage 3B validator passed; semantic compatibility risk is low; empty-text
+  risk is resolved; hubness and induced topology risks are low; `S_II_star /
+  S_TT_star` effective rank is approximately `727 / 701`.
+- NUS concept fairness was recalibrated with prevalence-aware thresholds and
+  integrated into the NUS safety audit.
+  The previous medium risk was mainly caused by applying a uniform
+  `lift>=2.0` gate to high-frequency concepts `sky` and `clouds`.
+- After calibration, low-frequency concepts `grass`, `buildings`, `window`,
+  `plants`, and `lake` show strong lift and diagonal top-k behavior.
+- NUS Stage 3B formal `S` is locked under the prevalence-aware safety audit:
+  validator passed, compatibility risk is low, safety risk is low, and
+  `nus_stage3_s_good_for_stage4_and_stage5=true`.
+- NUS Stage 3B remains acceptable for later Stage 4/5 preparation; this does
+  not mark Stage 4, training, or evaluation as started.
 
 ## MIR Revision Checkpoint
 
@@ -138,11 +184,19 @@ Last updated: 2026-04-25
   - tau_confidence = 0.0075
   - compatibility risk_level = low
   - validator passed
-- NUS/COCO:
-  - preprocessing consistency audited
-  - keep frozen
-  - Stage 3B/3C not started
-  - Stage 4 not started
+- NUS Stage 3B locked:
+  - lambda_ar_fusion = 0.55
+  - tau_confidence = 0.005
+  - compatibility risk_level = low
+  - safety risk_level = low
+  - validator passed
+- COCO Stage 3C locked:
+  - lambda_ar_fusion = 0.80
+  - tau_confidence = 0.01
+  - compatibility risk_level = low
+  - safety/evaluator risk_level = medium because zero_label_query_count = 11 and query_with_no_relevant_retrieval_count = 11
+  - validator passed
+- Stage 4 not started
 
 ## Stage 2 Status
 
@@ -154,8 +208,13 @@ Last updated: 2026-04-25
 - NUS feature shapes: `X_I=(186577, 512)`, `X_T=(186577, 512)`, dtype `float32`.
 - COCO feature shapes: `X_I=(123287, 512)`, `X_T=(123287, 512)`, dtype `float32`.
 - Stage 3A / MIRFlickr-25K semantic_set_id: `se_c_s_formal_v1`; rerun after MIR RA-like label-positive Stage 1/2 revision with `lambda_ar_fusion=0.70`, `tau_confidence=0.0075`, completed locally, and `validate_stage3_semantic.py --dataset mirflickr25k` passed.
-- Stage 3B / NUS-WIDE: not started.
-- Stage 3C / MSCOCO: not started.
+- Stage 3B / NUS-WIDE: NUS-only recovery rerun completed locally; validator
+  passed, compatibility risk is low, empty-text risk is resolved, and
+  prevalence-aware safety audit risk is low.
+- Stage 3C / MSCOCO: completed locally with `lambda_ar_fusion=0.80`,
+  `tau_confidence=0.01`; validator passed, compatibility risk is low, and
+  safety/evaluator risk is medium because 11 all-query samples have no
+  relevant retrieval.
 - Stage 4, model construction, and training: not started.
 
 ## Stage 3A MIRFlickr-25K Status
@@ -209,10 +268,11 @@ substitute for final binary hash retrieval.
 
 ## Stage 1 Status
 
-- Stage 1 status: completed; MIRFlickr-25K uses the RA-like label-positive revision checkpoint.
+- Stage 1 status: completed baseline exists; NUS-WIDE is under the authorized
+  `nus_train_nonempty_text_v2` recovery revision for Stage 3B safety.
 - Stage 1 datasets:
   - mirflickr25k: raw=25000, filtered=20015, query=2000, retrieval=18015, train=5000; filtering_policy=`mir_pragmatic_high_signal_label_positive_v2`.
-  - nuswide: raw=269648, filtered=186577, query=2000, retrieval=184577, train=5000.
+  - nuswide: raw=269648, filtered=186577, query=2000, retrieval=184577, train=5000; recovery policy `nus_train_nonempty_text_v2` keeps query/retrieval unchanged and selects train from non-empty retrieval text.
   - mscoco: raw=123287, filtered=123287, query=2000, retrieval=121287, train=5000.
 
 ## Stage 1 Frozen Artifacts

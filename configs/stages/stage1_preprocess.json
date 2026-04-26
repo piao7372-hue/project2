@@ -71,7 +71,8 @@
       "label_dimension": 10,
       "sample_id_prefix": "nus",
       "filter_policy": "top10_concept_positive_v1",
-      "text_source_protocol": "final_tag_list_projected_binary_decode_v1"
+      "text_source_protocol": "final_tag_list_projected_binary_decode_v1",
+      "train_selection_policy": "nus_train_nonempty_text_v2"
     },
     "mscoco": {
       "enabled_in_stage1c": true,

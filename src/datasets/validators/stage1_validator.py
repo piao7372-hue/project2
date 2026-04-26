@@ -6,10 +6,12 @@ import re
 from typing import Any
 
 from src.datasets.builders.stage1_preprocess import (
+    NUS_TRAIN_SELECTION_POLICY_NONEMPTY_TEXT,
     _read_nus_final_tag_list,
     _read_nus_image_index,
     _read_nus_label_columns,
     _scan_nus_concepts,
+    apply_nus_train_selection_policy,
     build_coco_samples,
     decode_nus_tag_line,
     hash_lines,
@@ -17,7 +19,7 @@ from src.datasets.builders.stage1_preprocess import (
 )
 from src.utils.jsonl import iter_jsonl, read_json, write_json
 
-STAGE1_VALIDATOR_VERSION = "stage1_mir_nus_coco_validator_v3"
+STAGE1_VALIDATOR_VERSION = "stage1_mir_nus_coco_validator_v4"
 MIR_DATASET = "mirflickr25k"
 NUS_DATASET = "nuswide"
 COCO_DATASET = "mscoco"
@@ -101,10 +103,13 @@ def _validate_nus(repo_root: Path, config_path: Path) -> dict[str, Any]:
         filtered_rows = list(iter_jsonl(paths["manifest_filtered"]))
         filtered_count = len(filtered_rows)
         _check_nus_filtered_manifest(repo_root, filtered_rows, expected_filtered, dataset_config, failures)
-        _check_splits(filtered_rows, paths, config["split"], dataset_config, failures)
+        _check_splits(filtered_rows, paths, config["split"], dataset_config, failures, NUS_DATASET)
         _check_hashes(filtered_rows, paths, failures)
         _check_no_silent_fallback(paths, failures)
         _check_no_kaggle_top10(paths, failures)
+        nus_train_contract = _check_nus_train_split_contract(filtered_rows, paths, config, failures)
+    else:
+        nus_train_contract = {}
     summary = _base_summary(NUS_DATASET, processed_root, output_presence, failures, [], filtered_rows, paths)
     summary.update(
         {
@@ -117,6 +122,7 @@ def _validate_nus(repo_root: Path, config_path: Path) -> dict[str, Any]:
             "empty_tag_row_count": empty_tag_rows,
         }
     )
+    summary.update(nus_train_contract)
     write_json(paths["validator_summary"], summary)
     return summary
 
@@ -380,7 +386,14 @@ def _check_sample_ids(rows: list[dict[str, Any]], name: str, failures: list[str]
         failures.append(f"{name} sample_id is not unique")
 
 
-def _check_splits(filtered_rows: list[dict[str, Any]], paths: dict[str, Path], split_config: dict[str, Any], dataset_config: dict[str, Any], failures: list[str]) -> None:
+def _check_splits(
+    filtered_rows: list[dict[str, Any]],
+    paths: dict[str, Path],
+    split_config: dict[str, Any],
+    dataset_config: dict[str, Any],
+    failures: list[str],
+    dataset_name: str = MIR_DATASET,
+) -> None:
     query_ids = _read_lines(paths["query_ids"])
     retrieval_ids = _read_lines(paths["retrieval_ids"])
     train_ids = _read_lines(paths["train_ids"])
@@ -400,8 +413,90 @@ def _check_splits(filtered_rows: list[dict[str, Any]], paths: dict[str, Path], s
         query_count=int(split_config["query_count"]),
         train_count=int(split_config["train_count"]),
     )
+    if dataset_name == NUS_DATASET:
+        expected = apply_nus_train_selection_policy(
+            expected,
+            filtered_rows,
+            str(dataset_config.get("train_selection_policy", "retrieval_prefix_v1")),
+            int(split_config["train_count"]),
+        )
     if query_ids != expected["query_ids"] or retrieval_ids != expected["retrieval_ids"] or train_ids != expected["train_ids"]:
         failures.append("split ids do not match formal seed=0 permutation")
+
+
+def _check_nus_train_split_contract(
+    filtered_rows: list[dict[str, Any]],
+    paths: dict[str, Path],
+    config: dict[str, Any],
+    failures: list[str],
+) -> dict[str, Any]:
+    split_config = config["split"]
+    dataset_config = config["datasets"][NUS_DATASET]
+    expected_policy = str(dataset_config.get("train_selection_policy", ""))
+    if expected_policy != NUS_TRAIN_SELECTION_POLICY_NONEMPTY_TEXT:
+        failures.append(f"NUS train_selection_policy must be {NUS_TRAIN_SELECTION_POLICY_NONEMPTY_TEXT}, got {expected_policy}")
+    split_summary = read_json(paths["split_summary"])
+    preprocess_summary = read_json(paths["preprocess_summary"])
+    for name, payload in (("split_summary", split_summary), ("preprocess_summary", preprocess_summary)):
+        if payload.get("train_selection_policy") != expected_policy:
+            failures.append(f"{name}.train_selection_policy does not match NUS config")
+
+    query_ids = _read_lines(paths["query_ids"])
+    retrieval_ids = _read_lines(paths["retrieval_ids"])
+    train_ids = _read_lines(paths["train_ids"])
+    by_id = {str(row["sample_id"]): row for row in filtered_rows}
+    label_masks = {sample_id: _label_mask(row) for sample_id, row in by_id.items()}
+    zero_filtered = sum(mask == 0 for mask in label_masks.values())
+    zero_query = sum(label_masks[sample_id] == 0 for sample_id in query_ids)
+    zero_retrieval = sum(label_masks[sample_id] == 0 for sample_id in retrieval_ids)
+    zero_train = sum(label_masks[sample_id] == 0 for sample_id in train_ids)
+    empty_text_train = sum(1 for sample_id in train_ids if not str(by_id[sample_id].get("text_source", "")).strip())
+    retrieval_union_mask = 0
+    for sample_id in retrieval_ids:
+        retrieval_union_mask |= label_masks[sample_id]
+    no_relevant = sum(1 for sample_id in query_ids if label_masks[sample_id] == 0 or not (label_masks[sample_id] & retrieval_union_mask))
+    train_is_subset = set(train_ids).issubset(set(retrieval_ids))
+    query_retrieval_disjoint = set(query_ids).isdisjoint(set(retrieval_ids))
+
+    if len(filtered_rows) != int(dataset_config["expected_filtered_count"]):
+        failures.append(f"NUS filtered_count mismatch: expected {dataset_config['expected_filtered_count']}, got {len(filtered_rows)}")
+    if len(query_ids) != int(split_config["query_count"]):
+        failures.append(f"NUS query_count mismatch: expected {split_config['query_count']}, got {len(query_ids)}")
+    if len(retrieval_ids) != int(dataset_config["expected_retrieval_count"]):
+        failures.append(f"NUS retrieval_count mismatch: expected {dataset_config['expected_retrieval_count']}, got {len(retrieval_ids)}")
+    if len(train_ids) != int(split_config["train_count"]):
+        failures.append(f"NUS train_count mismatch: expected {split_config['train_count']}, got {len(train_ids)}")
+    if zero_filtered != 0:
+        failures.append(f"zero_label_filtered_count must be 0, got {zero_filtered}")
+    if zero_train != 0:
+        failures.append(f"zero_label_train_count must be 0, got {zero_train}")
+    if no_relevant != 0:
+        failures.append(f"query_with_no_relevant_retrieval_count must be 0, got {no_relevant}")
+    if empty_text_train != 0:
+        failures.append(f"empty_text_train_count must be 0, got {empty_text_train}")
+    if not train_is_subset:
+        failures.append("NUS train split is not a retrieval subset")
+    if not query_retrieval_disjoint:
+        failures.append("NUS query and retrieval splits overlap")
+    for name, payload in (("split_summary", split_summary), ("preprocess_summary", preprocess_summary)):
+        if payload.get("empty_text_train_count") != empty_text_train:
+            failures.append(f"{name}.empty_text_train_count does not match computed value")
+    if preprocess_summary.get("zero_label_filtered_count") != zero_filtered:
+        failures.append("preprocess_summary.zero_label_filtered_count does not match computed value")
+    if preprocess_summary.get("query_with_no_relevant_retrieval_count") != no_relevant:
+        failures.append("preprocess_summary.query_with_no_relevant_retrieval_count does not match computed value")
+
+    return {
+        "train_selection_policy": expected_policy,
+        "zero_label_filtered_count": zero_filtered,
+        "zero_label_query_count": zero_query,
+        "zero_label_retrieval_count": zero_retrieval,
+        "zero_label_train_count": zero_train,
+        "empty_text_train_count": empty_text_train,
+        "query_with_no_relevant_retrieval_count": no_relevant,
+        "train_is_subset_of_retrieval": train_is_subset,
+        "query_retrieval_disjoint": query_retrieval_disjoint,
+    }
 
 
 def _check_hashes(filtered_rows: list[dict[str, Any]], paths: dict[str, Path], failures: list[str]) -> None:

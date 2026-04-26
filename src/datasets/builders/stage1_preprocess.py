@@ -12,11 +12,12 @@ import numpy as np
 from src.utils.jsonl import jsonl_dumps, read_json, write_json, write_jsonl
 
 STAGE1A_BUILDER_VERSION = "stage1a_mir_builder_v2"
-STAGE1B_BUILDER_VERSION = "stage1b_nus_builder_v1"
+STAGE1B_BUILDER_VERSION = "stage1b_nus_builder_v2"
 STAGE1C_BUILDER_VERSION = "stage1c_coco_builder_v1"
 MIR_DATASET = "mirflickr25k"
 NUS_DATASET = "nuswide"
 COCO_DATASET = "mscoco"
+NUS_TRAIN_SELECTION_POLICY_NONEMPTY_TEXT = "nus_train_nonempty_text_v2"
 MIR_SAMPLE_RE = re.compile(r"^mir_\d{5}$")
 NUS_SAMPLE_RE = re.compile(r"^nus_\d{6}$")
 COCO_SAMPLE_RE = re.compile(r"^coco_\d{12}$")
@@ -146,7 +147,15 @@ def _run_nuswide_preprocess(repo_root: Path, config: dict[str, Any], raw_roots: 
         query_count=int(config["split"]["query_count"]),
         train_count=int(config["split"]["train_count"]),
     )
-    _validate_nus_counts(expected_raw, filtered_samples, split, dataset_config)
+    train_selection_policy = str(dataset_config.get("train_selection_policy", "retrieval_prefix_v1"))
+    split = apply_nus_train_selection_policy(
+        split,
+        filtered_samples,
+        train_selection_policy,
+        int(config["split"]["train_count"]),
+    )
+    split_contract = nus_split_contract_stats(filtered_samples, split)
+    _validate_nus_counts(expected_raw, filtered_samples, split, dataset_config, split_contract)
     order_hashes = {
         "sample_id_order_sha256": hash_lines(sorted(sample["sample_id"] for sample in filtered_samples)),
         "manifest_filtered_order_sha256": hash_lines(sample["sample_id"] for sample in filtered_samples),
@@ -159,8 +168,34 @@ def _run_nuswide_preprocess(repo_root: Path, config: dict[str, Any], raw_roots: 
     _write_lines(paths["query_ids"], split["query_ids"])
     _write_lines(paths["retrieval_ids"], split["retrieval_ids"])
     _write_lines(paths["train_ids"], split["train_ids"])
-    write_json(paths["split_summary"], _split_summary(split, config["split"], dataset_config, generated_at, NUS_DATASET))
-    write_json(paths["preprocess_summary"], _nus_preprocess_summary(dataset_config, raw_root, processed_root, tag_stats, concept_summary, split, order_hashes, generated_at))
+    write_json(
+        paths["split_summary"],
+        _split_summary(
+            split,
+            config["split"],
+            dataset_config,
+            generated_at,
+            NUS_DATASET,
+            train_selection_policy=train_selection_policy,
+            empty_text_train_count=split_contract["empty_text_train_count"],
+            zero_label_train_count=split_contract["zero_label_train_count"],
+        ),
+    )
+    write_json(
+        paths["preprocess_summary"],
+        _nus_preprocess_summary(
+            dataset_config,
+            raw_root,
+            processed_root,
+            tag_stats,
+            concept_summary,
+            split,
+            order_hashes,
+            generated_at,
+            train_selection_policy,
+            split_contract,
+        ),
+    )
     write_json(paths["config_snapshot"], {"stage1_config": config, "raw_roots_config": {NUS_DATASET: raw_roots[NUS_DATASET]}})
     write_json(paths["order_hashes"], order_hashes)
     return {
@@ -169,6 +204,10 @@ def _run_nuswide_preprocess(repo_root: Path, config: dict[str, Any], raw_roots: 
         "raw_count": expected_raw,
         "filtered_count": len(filtered_samples),
         "empty_tag_row_count": tag_stats["empty_tag_row_count"],
+        "train_selection_policy": train_selection_policy,
+        "empty_text_train_count": split_contract["empty_text_train_count"],
+        "zero_label_filtered_count": split_contract["zero_label_filtered_count"],
+        "query_with_no_relevant_retrieval_count": split_contract["query_with_no_relevant_retrieval_count"],
         "query_count": len(split["query_ids"]),
         "retrieval_count": len(split["retrieval_ids"]),
         "train_count": len(split["train_ids"]),
@@ -189,6 +228,64 @@ def make_split(sample_ids: list[str], seed: int, query_count: int, train_count: 
     retrieval_ids = permuted[query_count:]
     train_ids = retrieval_ids[:train_count]
     return {"query_ids": query_ids, "retrieval_ids": retrieval_ids, "train_ids": train_ids}
+
+
+def apply_nus_train_selection_policy(
+    split: dict[str, list[str]],
+    filtered_samples: list[dict[str, Any]],
+    train_selection_policy: str,
+    train_count: int,
+) -> dict[str, list[str]]:
+    if train_selection_policy == "retrieval_prefix_v1":
+        return split
+    if train_selection_policy != NUS_TRAIN_SELECTION_POLICY_NONEMPTY_TEXT:
+        raise RuntimeError(f"unsupported NUS train_selection_policy: {train_selection_policy}")
+    by_id = {str(sample["sample_id"]): sample for sample in filtered_samples}
+    selected: list[str] = []
+    for sample_id in split["retrieval_ids"]:
+        row = by_id.get(sample_id)
+        if row is None:
+            raise RuntimeError(f"NUS retrieval split id missing from manifest_filtered: {sample_id}")
+        if str(row.get("text_source", "")).strip():
+            selected.append(sample_id)
+            if len(selected) == train_count:
+                break
+    if len(selected) != train_count:
+        raise RuntimeError(
+            f"NUS non-empty text train selection found only {len(selected)} candidates; expected {train_count}"
+        )
+    revised = dict(split)
+    revised["train_ids"] = selected
+    return revised
+
+
+def nus_split_contract_stats(filtered_samples: list[dict[str, Any]], split: dict[str, list[str]]) -> dict[str, Any]:
+    by_id = {str(sample["sample_id"]): sample for sample in filtered_samples}
+    label_masks = {sample_id: _label_mask(row) for sample_id, row in by_id.items()}
+    query_ids = split["query_ids"]
+    retrieval_ids = split["retrieval_ids"]
+    train_ids = split["train_ids"]
+    retrieval_union_mask = 0
+    for sample_id in retrieval_ids:
+        retrieval_union_mask |= label_masks[sample_id]
+    return {
+        "zero_label_filtered_count": sum(mask == 0 for mask in label_masks.values()),
+        "zero_label_query_count": sum(label_masks[sample_id] == 0 for sample_id in query_ids),
+        "zero_label_retrieval_count": sum(label_masks[sample_id] == 0 for sample_id in retrieval_ids),
+        "zero_label_train_count": sum(label_masks[sample_id] == 0 for sample_id in train_ids),
+        "empty_text_train_count": sum(1 for sample_id in train_ids if not str(by_id[sample_id].get("text_source", "")).strip()),
+        "query_with_no_relevant_retrieval_count": sum(
+            1 for sample_id in query_ids if label_masks[sample_id] == 0 or not (label_masks[sample_id] & retrieval_union_mask)
+        ),
+    }
+
+
+def _label_mask(row: dict[str, Any]) -> int:
+    mask = 0
+    for index, value in enumerate(row.get("label_vector", [])):
+        if int(value):
+            mask |= 1 << index
+    return mask
 
 
 def hash_lines(lines: Any) -> str:
@@ -342,7 +439,13 @@ def _validate_counts(raw_samples: list[dict[str, Any]], filtered_samples: list[d
         raise RuntimeError("train split is not a subset of retrieval split")
 
 
-def _validate_nus_counts(expected_raw: int, filtered_samples: list[dict[str, Any]], split: dict[str, list[str]], config: dict[str, Any]) -> None:
+def _validate_nus_counts(
+    expected_raw: int,
+    filtered_samples: list[dict[str, Any]],
+    split: dict[str, list[str]],
+    config: dict[str, Any],
+    split_contract: dict[str, Any],
+) -> None:
     expected_filtered = int(config["expected_filtered_count"])
     expected_retrieval = int(config["expected_retrieval_count"])
     if expected_raw != int(config["expected_raw_count"]):
@@ -353,6 +456,16 @@ def _validate_nus_counts(expected_raw: int, filtered_samples: list[dict[str, Any
         raise RuntimeError(f"NUS retrieval count mismatch: expected {expected_retrieval}, got {len(split['retrieval_ids'])}")
     if not set(split["train_ids"]).issubset(set(split["retrieval_ids"])):
         raise RuntimeError("NUS train split is not a subset of retrieval split")
+    if config.get("train_selection_policy") == NUS_TRAIN_SELECTION_POLICY_NONEMPTY_TEXT:
+        if int(split_contract["empty_text_train_count"]) != 0:
+            raise RuntimeError(f"NUS empty_text_train_count must be 0, got {split_contract['empty_text_train_count']}")
+        if int(split_contract["zero_label_filtered_count"]) != 0:
+            raise RuntimeError(f"NUS zero_label_filtered_count must be 0, got {split_contract['zero_label_filtered_count']}")
+        if int(split_contract["query_with_no_relevant_retrieval_count"]) != 0:
+            raise RuntimeError(
+                "NUS query_with_no_relevant_retrieval_count must be 0, "
+                f"got {split_contract['query_with_no_relevant_retrieval_count']}"
+            )
 
 
 def _validate_coco_counts(samples: list[dict[str, Any]], split: dict[str, list[str]], config: dict[str, Any]) -> None:
@@ -388,13 +501,22 @@ def _manifest_meta(config: dict[str, Any], raw_root: Path, raw_samples: list[dic
     }
 
 
-def _split_summary(split: dict[str, list[str]], split_config: dict[str, Any], dataset_config: dict[str, Any], generated_at: str, dataset_name: str = MIR_DATASET) -> dict[str, Any]:
+def _split_summary(
+    split: dict[str, list[str]],
+    split_config: dict[str, Any],
+    dataset_config: dict[str, Any],
+    generated_at: str,
+    dataset_name: str = MIR_DATASET,
+    train_selection_policy: str | None = None,
+    empty_text_train_count: int | None = None,
+    zero_label_train_count: int | None = None,
+) -> dict[str, Any]:
     substage_by_dataset = {
         MIR_DATASET: "stage1a_mirflickr25k",
         NUS_DATASET: "stage1b_nuswide",
         COCO_DATASET: "stage1c_mscoco",
     }
-    return {
+    summary = {
         "stage": "stage1",
         "substage": substage_by_dataset[dataset_name],
         "generated_at_utc": generated_at,
@@ -410,6 +532,13 @@ def _split_summary(split: dict[str, list[str]], split_config: dict[str, Any], da
         "train_is_retrieval_subset": set(split["train_ids"]).issubset(set(split["retrieval_ids"])),
         "query_retrieval_disjoint": set(split["query_ids"]).isdisjoint(set(split["retrieval_ids"])),
     }
+    if train_selection_policy is not None:
+        summary["train_selection_policy"] = train_selection_policy
+    if empty_text_train_count is not None:
+        summary["empty_text_train_count"] = empty_text_train_count
+    if zero_label_train_count is not None:
+        summary["zero_label_train_count"] = zero_label_train_count
+    return summary
 
 
 def build_coco_samples(repo_root: Path, raw_root: Path, config: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any], list[dict[str, Any]]]:
@@ -787,7 +916,18 @@ def _nus_manifest_meta(config: dict[str, Any], raw_root: Path, tag_stats: dict[s
     }
 
 
-def _nus_preprocess_summary(config: dict[str, Any], raw_root: Path, processed_root: Path, tag_stats: dict[str, Any], concept_summary: dict[str, Any], split: dict[str, list[str]], hashes: dict[str, str], generated_at: str) -> dict[str, Any]:
+def _nus_preprocess_summary(
+    config: dict[str, Any],
+    raw_root: Path,
+    processed_root: Path,
+    tag_stats: dict[str, Any],
+    concept_summary: dict[str, Any],
+    split: dict[str, list[str]],
+    hashes: dict[str, str],
+    generated_at: str,
+    train_selection_policy: str,
+    split_contract: dict[str, Any],
+) -> dict[str, Any]:
     return {
         "stage": "stage1",
         "substage": "stage1b_nuswide",
@@ -806,9 +946,16 @@ def _nus_preprocess_summary(config: dict[str, Any], raw_root: Path, processed_ro
         "empty_tag_row_count": tag_stats["empty_tag_row_count"],
         "raw_out_of_vocab_token_count": tag_stats["raw_out_of_vocab_token_count"],
         "text_source_protocol": config["text_source_protocol"],
+        "train_selection_policy": train_selection_policy,
         "query_count": len(split["query_ids"]),
         "retrieval_count": len(split["retrieval_ids"]),
         "train_count": len(split["train_ids"]),
+        "zero_label_filtered_count": split_contract["zero_label_filtered_count"],
+        "zero_label_query_count": split_contract["zero_label_query_count"],
+        "zero_label_retrieval_count": split_contract["zero_label_retrieval_count"],
+        "zero_label_train_count": split_contract["zero_label_train_count"],
+        "empty_text_train_count": split_contract["empty_text_train_count"],
+        "query_with_no_relevant_retrieval_count": split_contract["query_with_no_relevant_retrieval_count"],
         "order_hashes": hashes,
         "deprecated_kaggle_top10_used": False,
         "silent_fallback_used": False,
