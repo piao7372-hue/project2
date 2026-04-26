@@ -1,0 +1,80 @@
+{
+  "runtime": {
+    "python": "C:\\Users\\ASVS\\anaconda3\\envs\\deeplearning\\python.exe",
+    "device": "cuda:0",
+    "dtype": "float32",
+    "amp_enabled": false,
+    "seed": 0,
+    "relation_block_size": 512,
+    "eps": 1e-8
+  },
+  "hash_bits": [
+    16,
+    32,
+    64,
+    128
+  ],
+  "outputs": {
+    "loss_audit_root": "outputs/stage5_loss_audit"
+  },
+  "execution_policy": {
+    "stage5c_allowed_datasets": [
+      "mirflickr25k",
+      "nuswide",
+      "mscoco"
+    ],
+    "allow_silent_fallback": false,
+    "allow_zero_vector_padding": false,
+    "allow_bad_sample_skip": false,
+    "allow_cpu_fallback": false,
+    "allow_automatic_beta_fallback": false,
+    "allow_dense_to_cpu_fallback": false,
+    "allow_compatibility_alias": false,
+    "fail_fast": true
+  },
+  "datasets": {
+    "mirflickr25k": {
+      "alpha_intra_topology": 0.5,
+      "lambda_sem_total": 1.0,
+      "lambda_pair_total": 0.6,
+      "lambda_q_total": 0.05,
+      "lambda_bal_total": 0.01,
+      "beta_relation_weight": 30,
+      "beta_relation_weight_candidates": [
+        10,
+        30,
+        50,
+        100
+      ]
+    },
+    "nuswide": {
+      "alpha_intra_topology": 0.7,
+      "lambda_sem_total": 1.2,
+      "lambda_pair_total": 0.4,
+      "lambda_q_total": 0.08,
+      "lambda_bal_total": 0.02,
+      "beta_relation_weight": 50,
+      "beta_relation_weight_candidates": [
+        20,
+        50,
+        100,
+        150
+      ]
+    },
+    "mscoco": {
+      "alpha_intra_topology": 0.6,
+      "lambda_sem_total": 1.0,
+      "lambda_pair_total": 0.8,
+      "lambda_q_total": 0.05,
+      "lambda_bal_total": 0.01,
+      "beta_relation_weight": 30,
+      "beta_relation_weight_candidates": [
+        10,
+        30,
+        50,
+        100
+      ]
+    }
+  },
+  "stage5_note": "Stage 5 audit profiles only; these are not final Stage 6 training parameters."
+}

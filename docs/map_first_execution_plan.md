@@ -131,6 +131,15 @@ Loss must follow `docs/specs/theory_loss_function.md`:
 `S`. Perform loss-scale audit before long training. Track
 `beta_relation_weight` effect because `S` values may be small.
 
+Stage 5D adds a loss-weight sensitivity audit for Stage 6 dev-only candidate
+profiles. No training is performed, no final Stage 6 profile is selected, and
+the default Stage 5 audit profiles remain unchanged.
+
+Stage 5 is completed locally. Acceptance summary:
+`docs/stage5_acceptance_summary.md`. Stage 6 is not started. Stage 7 is not
+started. Stage 6 dev training must use the Stage 5D recommendations as
+candidate profiles only, not as final training profiles.
+
 ## Stage 6 Gate
 
 Use dev mode first. Start with 128-bit sanity training per dataset.

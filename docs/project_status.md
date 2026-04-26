@@ -21,12 +21,17 @@ Last updated: 2026-04-26
 
 - Stage 0: completed and pushed (`43e3cc1 stage0: finalize environment raw data and clip preparation`).
 - Stage 1: completed and pushed (`f0b5d17 stage1: build manifests and freeze splits`).
-- Current next stage: Stage 4 post-cleanup, full validator review, and publish checkpoint; Stage 5 has not started.
+- Stage 4 completed and pushed.
+- Stage 5 completed locally, ready for commit.
+- Stage 5 acceptance summary: `docs/stage5_acceptance_summary.md`.
+- Current immediate task: Stage 5 closure, full validation, lightweight cache cleanup, commit, and push.
+- Stage 6 training not started.
+- Stage 7 evaluation not started.
 - Stage 2A status: MIRFlickr-25K completed and validator passed.
 - Stage 2B status: NUS-WIDE completed and validator passed.
 - Stage 2C status: MSCOCO completed and validator passed.
-- Current scope: Stage 4 post-cleanup, full Stage 1/2/3/4 validator review, commit, and push.
-- Not in scope: Stage 5, training, mAP evaluation, or model-logic changes.
+- Current scope: Stage 5 closure, full validation, lightweight cache cleanup, commit, and push.
+- Not in scope: training, optimizer steps, mAP evaluation, Stage 6, or Stage 7.
 - Stage 3 acceptance summary: `docs/stage3_acceptance_summary.md`.
 
 ## Stage 0F-1 Products
@@ -105,7 +110,8 @@ Last updated: 2026-04-26
 
 - mAP-first execution plan: `docs/map_first_execution_plan.md`.
 - Stage 3 acceptance summary: `docs/stage3_acceptance_summary.md`.
-- Current immediate task: Stage 3 post-lock cleanup and full validator review.
+- Current immediate task: Stage 5 closure, full validation, lightweight cache cleanup, commit, and push.
+- Stage 5 acceptance summary: `docs/stage5_acceptance_summary.md`.
 - Stage 1/2 remain frozen unless the Pre-Stage3 readiness audit shows a hard failure.
 - Stage 3 candidate selection must use unsupervised `S`-quality criteria first.
 - Label-aware metrics are diagnostics only and must not become training
@@ -115,14 +121,22 @@ Last updated: 2026-04-26
   compatibility audit.
 - Stage 4 was explicitly authorized after MIR/NUS/COCO all had formal Stage 3 `S` locked.
 - Stage 3A MIR, Stage 3B NUS, and Stage 3C COCO are locked locally.
-- Stage 4 status: completed locally and ready to commit.
+- Stage 4 completed and pushed.
+- Stage 5 completed locally, ready for commit.
+- Stage 6 training not started.
+- Stage 7 evaluation not started.
 - Stage 0 is complete and pushed.
 - Stage 1 pushed baseline exists; MIRFlickr-25K now has the RA-like label-positive revision checkpoint.
 - Stage 2A MIRFlickr-25K is complete locally after the MIR revision and validator passed.
 - Stage 2B NUS-WIDE is complete and validator passed.
 - Stage 2C MSCOCO is complete and validator passed.
 - Stage 3A MIRFlickr-25K semantic matrices completed locally after the MIR revision with `lambda_ar_fusion=0.70`, `tau_confidence=0.0075`, and validator passed.
-- Stage 4, model construction, training, and evaluation are not allowed until explicitly authorized.
+- Stage 4 completed and pushed; Stage 5 completed locally and is ready for commit.
+- Stage 5 acceptance summary: `docs/stage5_acceptance_summary.md`.
+- Stage 6 dev training must use Stage 5D candidate recommendations as dev-only candidates.
+- Stage 5D candidate recommendations are not final Stage 6 training profiles.
+- Stage 5 completion does not mark Stage 6 started, does not train, and does not select a final Stage 6 profile.
+- Stage 6 training and Stage 7 evaluation are not started.
 
 ## Stage 3B NUS-WIDE No-Go Recovery Override
 
@@ -196,7 +210,9 @@ Last updated: 2026-04-26
   - compatibility risk_level = low
   - safety/evaluator risk_level = medium because zero_label_query_count = 11 and query_with_no_relevant_retrieval_count = 11
   - validator passed
-- Stage 4 status: completed locally and ready to commit.
+- Stage 4 completed and pushed.
+- Stage 5 completed locally, ready for commit.
+- Stage 5 acceptance summary: `docs/stage5_acceptance_summary.md`.
 
 ## Stage 2 Status
 
@@ -215,11 +231,15 @@ Last updated: 2026-04-26
   `tau_confidence=0.01`; validator passed, compatibility risk is low, and
   safety/evaluator risk is medium because 11 all-query samples have no
   relevant retrieval.
-- Stage 4 status: completed locally and ready to commit.
+- Stage 4 completed and pushed.
+- Stage 5 completed locally, ready for commit.
+- Stage 5 acceptance summary: `docs/stage5_acceptance_summary.md`.
 
 ## Stage 4 Status
 
-- Stage 4 status: completed locally and ready to commit.
+- Stage 4 completed and pushed.
+- Stage 5 completed locally, ready for commit.
+- Stage 5 acceptance summary: `docs/stage5_acceptance_summary.md`.
 - Stage 4 model/cache ID: `chebykan_tree_graph_hash_v1` /
   `stage4_forward_v1`.
 - Stage 4 datasets:
@@ -237,7 +257,7 @@ Last updated: 2026-04-26
   - Outputs are untrained sanity caches, not final retrieval results.
   - Formal final retrieval is still Stage 7 and must use trained `B_I` /
     `B_T` with Hamming distance.
-  - Stage 5 loss has not started.
+  - Stage 5 loss completed locally, ready for commit.
   - Stage 6 training has not started.
   - Stage 7 evaluation has not started.
 - Known risks to monitor later:
