@@ -110,6 +110,11 @@ Last updated: 2026-04-26
 
 - mAP-first execution plan: `docs/map_first_execution_plan.md`.
 - Stage 3 acceptance summary: `docs/stage3_acceptance_summary.md`.
+- MIR v2 multi-target supervision contract draft under review:
+  `docs/mir_multitarget_supervision_v2_contract_draft.md`.
+- No formal `docs/specs/*` specification was modified for this draft.
+- No Stage 6 training has started from this draft.
+- No training was performed for this draft.
 - Current immediate task: Stage 5 closure, full validation, lightweight cache cleanup, commit, and push.
 - Stage 5 acceptance summary: `docs/stage5_acceptance_summary.md`.
 - Stage 1/2 remain frozen unless the Pre-Stage3 readiness audit shows a hard failure.

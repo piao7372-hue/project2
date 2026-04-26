@@ -140,6 +140,11 @@ Stage 5 is completed locally. Acceptance summary:
 started. Stage 6 dev training must use the Stage 5D recommendations as
 candidate profiles only, not as final training profiles.
 
+MIR v2 multi-target supervision contract draft is under review:
+`docs/mir_multitarget_supervision_v2_contract_draft.md`. No formal
+`docs/specs/*` specification was modified for this draft. No Stage 6 training
+has started from this draft. No training was performed for this draft.
+
 ## Stage 6 Gate
 
 Use dev mode first. Start with 128-bit sanity training per dataset.
